@@ -648,19 +648,49 @@ function router(pageId) {
  * EXPORT TO PDF
  */
 // Helper to convert image URL to Base64 via Proxy
+// Helper to convert image URL to Base64 (Smart Drive Handler)
 async function toDataURL(url) {
     return new Promise(async (resolve, reject) => {
         try {
-            const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
-            const res = await fetch(proxyUrl);
+            // 1. Try to extract Drive ID and use lh3 link (CORS friendly)
+            let fetchUrl = url;
+            const driveIdMatch = url.match(/id=([^&]+)/) || url.match(/\/d\/([^/]+)/);
+
+            if (driveIdMatch && driveIdMatch[1]) {
+                const fileId = driveIdMatch[1];
+                // lh3 link often supports CORS better than drive.google.com
+                fetchUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+            }
+
+            // 2. Fetch with CORS mode
+            const res = await fetch(fetchUrl, { mode: 'cors' });
+            if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+
             const blob = await res.blob();
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result);
             reader.onerror = reject;
             reader.readAsDataURL(blob);
+
         } catch (e) {
-            console.error("Image fetch failed:", url, e);
-            resolve(url); // Fallback to original URL
+            console.warn("Direct CORS fetch failed, trying proxy...", e);
+
+            // 3. Fallback: Try Proxy (different service if corsproxy.io fails)
+            try {
+                // legitimate CORS proxy backup
+                const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+                const res = await fetch(proxyUrl);
+                if (!res.ok) throw new Error('Proxy failed');
+
+                const blob = await res.blob();
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = () => resolve(url); // Give up, return original
+                reader.readAsDataURL(blob);
+            } catch (err) {
+                console.error("All fetch methods failed for:", url);
+                resolve(url); // Total failure, return URL (will likely be blank in PDF but prevents crash)
+            }
         }
     });
 }
