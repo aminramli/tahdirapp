@@ -83,7 +83,8 @@ const DB = {
         // Replace teachers
         data.teachers = teachers.map((t, i) => ({ id: i + 1, name: t.name, active: true }));
         // Replace records if available
-        if (records && records.length > 0) {
+        // Replace records (Corrected: Always overwrite to allow deletion)
+        if (records && Array.isArray(records)) {
             data.records = records;
         }
         this.save(data);
@@ -259,7 +260,7 @@ function handleImageUpload(input, previewId) {
                 // Compress logic using Canvas
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
-                const MAX_WIDTH = 800; // Resize to max 800px width
+                const MAX_WIDTH = 400; // Resize to max 400px (Smaller to fit in Google Sheet cell)
                 let width = img.width;
                 let height = img.height;
 
@@ -272,8 +273,8 @@ function handleImageUpload(input, previewId) {
                 canvas.height = height;
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // Compress to JPEG 0.6 quality (significant size reduction)
-                const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                // Compress to JPEG 0.5 quality (Aggressive compression)
+                const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.5);
 
                 // Save to state
                 uploadedImages[input.id] = compressedDataUrl;
