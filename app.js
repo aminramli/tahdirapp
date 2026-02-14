@@ -704,92 +704,60 @@ function exportAnalyticsToPDF() {
         }
     });
 
-    const printWindow = window.open('', '', 'width=800,height=900');
-    printWindow.document.write(`
-    <html>
-      <head>
-        <title>${fileName}</title>
-        <style>
-          body { font-family: sans-serif; padding: 40px; color: #333; }
-          .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #059669; padding-bottom: 20px; }
-          h1 { color: #059669; margin: 0; }
-          p.date-subtitle { color: #555; font-size: 1.1em; margin-top: 5px; font-weight: bold; }
-          .record { margin-bottom: 30px; page-break-inside: avoid; border: 1px solid #eee; padding: 25px; border-radius: 8px; }
-          .meta { font-size: 14px; color: #666; margin-bottom: 15px; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-          .label { font-weight: bold; font-size: 12px; color: #059669; text-transform: uppercase; margin-top: 15px; }
-          .value { margin-bottom: 5px; font-size: 14px; }
-          .absent { color: #dc2626; font-size: 14px; }
-          
-          /* Updated Image Styles for Side-by-Side with Order Control */
-          .img-grid { 
-            display: flex; 
-            flex-direction: row; /* Horizontal Side-by-Side */
-            justify-content: space-between; /* Space out the images */
-            gap: 10px; 
-            margin-top: 20px; 
-            page-break-inside: avoid;
-          }
-          .img-grid img { 
-            width: 49%; /* Each image takes slightly less than half width */
-            height: auto; 
-            max-height: 100mm;
-            object-fit: contain;
-            border: 1px solid #ccc;
-          }
-          
-          @page { size: A4 portrait; margin: 10mm; }
-          @media print { 
-            body { padding: 0; margin: 0; transform: scale(1.0); transform-origin: top left; } 
-            .record { border: none; border-bottom: 2px solid #ccc; padding: 0; margin-bottom: 30px; page-break-inside: avoid; } 
-            .img-grid img {
-                 max-height: 80mm; 
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>TAHDIR</h1>
-          <p class="date-subtitle">${sessionStr}${reportDate}</p>
+    // Create a temporary container for the PDF content
+    const element = document.createElement('div');
+    element.innerHTML = `
+    <div style="font-family: sans-serif; padding: 20px; color: #333;">
+        <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #059669; padding-bottom: 20px;">
+            <h1 style="color: #059669; margin: 0;">TAHDIR</h1>
+            <p style="color: #555; font-size: 1.1em; margin-top: 5px; font-weight: bold;">${sessionStr}${reportDate}</p>
         </div>
         ${Object.values(grouped).map(g => {
-        // Logic to reverse images so Image 2 is Left and Image 1 is Right (if both exist)
         const orderedImages = g.images ? [...g.images].reverse() : [];
-
         return `
-          <div class="record">
-            <div class="meta">${formatDate(g.date)} • ${g.slot} • Rating: ${g.progress}/5</div>
-            
-            <div class="label">Guru Bertugas</div>
-            <div class="value">${g.teachers.join(', ')}</div>
-            
-            ${g.absent.length ? `
-              <div class="label" style="color:#dc2626">Tidak Hadir</div>
-              ${g.absent.map(a => `<div class="absent">${a.name} (${a.reason})</div>`).join('')}
-            ` : ''}
-            
-            ${g.notes ? `
-              <div class="label">Catatan</div>
-              <div class="value">"${g.notes}"</div>
-            ` : ''}
+            <div style="margin-bottom: 30px; border: 1px solid #eee; padding: 20px; border-radius: 8px; page-break-inside: avoid;">
+                <div style="font-size: 14px; color: #666; margin-bottom: 15px; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                    ${formatDate(g.date)} • ${g.slot} • Rating: ${g.progress}/5
+                </div>
+                
+                <div style="font-weight: bold; font-size: 12px; color: #059669; text-transform: uppercase; margin-top: 15px;">Guru Bertugas</div>
+                <div style="margin-bottom: 5px; font-size: 14px;">${g.teachers.join(', ')}</div>
+                
+                ${g.absent.length ? `
+                    <div style="font-weight: bold; font-size: 12px; color: #dc2626; text-transform: uppercase; margin-top: 15px;">Tidak Hadir</div>
+                    ${g.absent.map(a => `<div style="color: #dc2626; font-size: 14px;">${a.name} (${a.reason})</div>`).join('')}
+                ` : ''}
+                
+                ${g.notes ? `
+                    <div style="font-weight: bold; font-size: 12px; color: #059669; text-transform: uppercase; margin-top: 15px;">Catatan</div>
+                    <div style="margin-bottom: 5px; font-size: 14px;">"${g.notes}"</div>
+                ` : ''}
 
-            ${orderedImages.length ? `
-              <div class="label">Gambar Lampiran</div>
-              <div class="img-grid">
-                ${orderedImages.map(src => `<img src="${src}">`).join('')}
-              </div>
-            ` : ''}
-          </div>
+                ${orderedImages.length ? `
+                    <div style="font-weight: bold; font-size: 12px; color: #059669; text-transform: uppercase; margin-top: 15px;">Gambar Lampiran</div>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        ${orderedImages.map(src => `<img src="${src}" style="width: 48%; height: auto; border: 1px solid #ccc;">`).join('')}
+                    </div>
+                ` : ''}
+            </div>
         `}).join('')}
-      </body>
-    </html>
-  `);
-    printWindow.document.close();
-    // Set document title explicitly for Save as PDF filename
-    printWindow.document.title = fileName;
-    setTimeout(() => printWindow.print(), 500);
+    </div>`;
+
+    // Configuration for html2pdf
+    const opt = {
+        margin: 10,
+        filename: `${fileName}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    // Generate and Save
+    showToast('Menjana PDF...', 'success');
+    html2pdf().set(opt).from(element).save().then(() => {
+        showToast('PDF berjaya dimuat turun!');
+    });
 }
 
 // Start App
 init().catch(console.error);
-
