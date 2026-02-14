@@ -737,7 +737,7 @@ function exportAnalyticsToPDF() {
                 ${orderedImages.length ? `
                     <div style="font-weight: bold; font-size: 12px; color: #059669; text-transform: uppercase; margin-top: 15px;">Gambar Lampiran</div>
                     <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        ${orderedImages.map(src => `<img src="${src}" crossorigin="anonymous" style="width: 48%; height: auto; border: 1px solid #ccc;">`).join('')}
+                        ${orderedImages.map(src => `<img src="https://corsproxy.io/?${encodeURIComponent(src)}" style="width: 48%; height: auto; border: 1px solid #ccc;">`).join('')}
                     </div>
                 ` : ''}
             </div>
