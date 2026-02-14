@@ -666,20 +666,34 @@ async function toDataURL(url) {
 }
 
 async function exportAnalyticsToPDF() {
-    const { from, to } = getDateRange();
-    const filtered = filterRecords(state.records, from, to);
+    const records = getFilteredRecords();
 
-    if (filtered.length === 0) {
+    if (records.length === 0) {
         showToast('Tiada rekod untuk dieksport', 'error');
         return;
     }
 
-    let reportDate = '';
-    const sessionStr = filterMode === 'day' ? `Sesi ${document.getElementById('duty-session').value}: ` : '';
+    // Determine Session String based on Filter Selection OR Logic
+    const sessionFilterVal = document.getElementById('analytics-session').value;
+    let sessionStr = "";
 
+    if (sessionFilterVal !== 'all') {
+        sessionStr = sessionFilterVal.toUpperCase() + " "; // E.g., "SUBUH "
+    } else {
+        // If "All" selected, try to detect if records are uniform
+        const allSessions = records.flatMap(r => r.time_slot ? r.time_slot.split(' & ') : []);
+        const uniqueSessions = [...new Set(allSessions)].filter(Boolean).sort().map(s => s.toUpperCase());
+        if (uniqueSessions.length > 0) {
+            sessionStr = uniqueSessions.join(' & ') + " ";
+        }
+    }
+
+    // Determine Date String based on Filter Mode
+    let reportDate = "";
     if (filterMode === 'day') {
         const dateVal = document.getElementById('analytics-date').value;
-        const dateObj = new Date(dateVal);
+        const parts = dateVal.split('-');
+        const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
         reportDate = dateObj.toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
     } else {
         const monthVal = document.getElementById('analytics-month').value;
@@ -694,10 +708,10 @@ async function exportAnalyticsToPDF() {
 
     // Deep clone to avoid mutating state
     const grouped = {};
-    const filteredCopy = JSON.parse(JSON.stringify(filtered));
+    const recordsToPrint = JSON.parse(JSON.stringify(records));
 
     // Async pre-process images
-    for (const r of filteredCopy) {
+    for (const r of recordsToPrint) {
         if (r.image1 && r.image1.startsWith('http')) {
             r.image1 = await toDataURL(r.image1);
         }
@@ -706,8 +720,8 @@ async function exportAnalyticsToPDF() {
         }
     }
 
-    // Grouping Logic (using processed images)
-    filteredCopy.forEach(r => {
+    // Grouping Logic
+    recordsToPrint.forEach(r => {
         const key = `${r.date}_${r.time_slot}`;
         if (!grouped[key]) {
             grouped[key] = {
