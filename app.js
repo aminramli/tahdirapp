@@ -3,7 +3,7 @@
  * KONFIGURASI GOOGLE APPS SCRIPT
  * Sila masukkan URL Web App anda di sini
  */
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzP7zzXLvorlmMSwi1Oqm1aU27Kc3fTqcdk72x6AVgCz49LQ3kSDWaaRbgBsjERJK1N/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxsRv-G4CAxU27IBLs3MFAfgsUk63mtGi080REhWgRiIA0doOADE9DyZVqph9y6Zq7tGA/exec';
 
 /**
  * LOCAL STORAGE DATABASE MOCK
