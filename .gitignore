@@ -1,0 +1,7 @@
+node_modules
+.DS_Store
+debug_script.js
+debug_script_v2.js
+index_v2.html
+test.html
+.vscode
