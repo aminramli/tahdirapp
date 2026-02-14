@@ -260,7 +260,7 @@ function handleImageUpload(input, previewId) {
                 // Compress logic using Canvas
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
-                const MAX_WIDTH = 400; // Resize to max 400px (Smaller to fit in Google Sheet cell)
+                const MAX_WIDTH = 1200; // High quality for Drive storage
                 let width = img.width;
                 let height = img.height;
 
@@ -273,8 +273,8 @@ function handleImageUpload(input, previewId) {
                 canvas.height = height;
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // Compress to JPEG 0.5 quality (Aggressive compression)
-                const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                // Compress to JPEG 0.8 quality (Good quality)
+                const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
 
                 // Save to state
                 uploadedImages[input.id] = compressedDataUrl;
