@@ -647,36 +647,41 @@ function router(pageId) {
 /**
  * EXPORT TO PDF
  */
-function exportAnalyticsToPDF() {
-    const records = getFilteredRecords();
-
-    if (records.length === 0) return showToast('Tiada rekod untuk diexport', 'error');
-
-    // Determine Session String based on Filter Selection OR Logic
-    const sessionFilterVal = document.getElementById('analytics-session').value;
-    let sessionStr = "";
-
-    if (sessionFilterVal !== 'all') {
-        sessionStr = sessionFilterVal.toUpperCase() + " "; // E.g., "SUBUH "
-    } else {
-        // If "All" selected, try to detect if records are uniform
-        const allSessions = records.flatMap(r => r.time_slot ? r.time_slot.split(' & ') : []);
-        const uniqueSessions = [...new Set(allSessions)].filter(Boolean).sort().map(s => s.toUpperCase());
-        if (uniqueSessions.length > 0) {
-            sessionStr = uniqueSessions.join(' & ') + " ";
+// Helper to convert image URL to Base64 via Proxy
+async function toDataURL(url) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+            const res = await fetch(proxyUrl);
+            const blob = await res.blob();
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        } catch (e) {
+            console.error("Image fetch failed:", url, e);
+            resolve(url); // Fallback to original URL
         }
+    });
+}
+
+async function exportAnalyticsToPDF() {
+    const { from, to } = getDateRange();
+    const filtered = filterRecords(state.records, from, to);
+
+    if (filtered.length === 0) {
+        showToast('Tiada rekod untuk dieksport', 'error');
+        return;
     }
 
-    // Determine Date String based on Filter Mode
-    let reportDate = "";
+    let reportDate = '';
+    const sessionStr = filterMode === 'day' ? `Sesi ${document.getElementById('duty-session').value}: ` : '';
+
     if (filterMode === 'day') {
         const dateVal = document.getElementById('analytics-date').value;
-        // Parse YYYY-MM-DD
-        const parts = dateVal.split('-');
-        const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+        const dateObj = new Date(dateVal);
         reportDate = dateObj.toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
     } else {
-        // Monthly mode
         const monthVal = document.getElementById('analytics-month').value;
         const parts = monthVal.split('-');
         const dateObj = new Date(parts[0], parts[1] - 1, 1);
@@ -685,9 +690,24 @@ function exportAnalyticsToPDF() {
 
     const fileName = `TAHDIR ${sessionStr}${reportDate}`;
 
-    // Group by date+slot for cleaner report
+    showToast('Sedang memproses gambar (ini mungkin mengambil masa)...', 'info');
+
+    // Deep clone to avoid mutating state
     const grouped = {};
-    records.forEach(r => {
+    const filteredCopy = JSON.parse(JSON.stringify(filtered));
+
+    // Async pre-process images
+    for (const r of filteredCopy) {
+        if (r.image1 && r.image1.startsWith('http')) {
+            r.image1 = await toDataURL(r.image1);
+        }
+        if (r.image2 && r.image2.startsWith('http')) {
+            r.image2 = await toDataURL(r.image2);
+        }
+    }
+
+    // Grouping Logic (using processed images)
+    filteredCopy.forEach(r => {
         const key = `${r.date}_${r.time_slot}`;
         if (!grouped[key]) {
             grouped[key] = {
@@ -737,7 +757,7 @@ function exportAnalyticsToPDF() {
                 ${orderedImages.length ? `
                     <div style="font-weight: bold; font-size: 12px; color: #059669; text-transform: uppercase; margin-top: 15px;">Gambar Lampiran</div>
                     <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        ${orderedImages.map(src => `<img src="https://corsproxy.io/?${encodeURIComponent(src)}" style="width: 48%; height: auto; border: 1px solid #ccc;">`).join('')}
+                        ${orderedImages.map(src => `<img src="${src}" style="width: 48%; height: auto; border: 1px solid #ccc;">`).join('')}
                     </div>
                 ` : ''}
             </div>
@@ -754,9 +774,12 @@ function exportAnalyticsToPDF() {
     };
 
     // Generate and Save
-    showToast('Menjana PDF...', 'success');
+    showToast('Menjana PDF muktamad...', 'success');
     html2pdf().set(opt).from(element).save().then(() => {
         showToast('PDF berjaya dimuat turun!');
+    }).catch(e => {
+        console.error("PDF generation failed:", e);
+        showToast('Gagal menjana PDF', 'error');
     });
 }
 
